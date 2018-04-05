@@ -241,7 +241,6 @@ private:
 
 	int yylex();
 	bool yylexSkipSpaces();
-	bool yylexSkipEol();	// returns true if EOL is detected and skipped
 	int yylexAux();
 
 	void yyerror(const TEXT* error_string);

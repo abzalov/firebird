@@ -98,7 +98,7 @@ THREAD_ENTRY_DECLARE threadStart(THREAD_ENTRY_PARAM arg)
 
 #ifdef USE_POSIX_THREADS
 #define START_THREAD
-ThreadId Thread::start(ThreadEntryPoint* routine, void* arg, int priority_arg, Handle* p_handle)
+void Thread::start(ThreadEntryPoint* routine, void* arg, int priority_arg, Handle* p_handle)
 {
 /**************************************
  *
@@ -180,7 +180,6 @@ ThreadId Thread::start(ThreadEntryPoint* routine, void* arg, int priority_arg, H
 #endif
 		*p_handle = thread;
 	}
-	return getId();
 }
 
 void Thread::waitForCompletion(Handle& thread)
@@ -209,9 +208,9 @@ ThreadId Thread::getId()
 #endif
 }
 
-bool Thread::isCurrent(const ThreadId threadId)
+bool Thread::isCurrent(Handle& thread)
 {
-	return getId() == threadId;
+	return pthread_self() == thread;
 }
 
 void Thread::sleep(unsigned milliseconds)
@@ -258,7 +257,7 @@ void Thread::yield()
 
 #ifdef WIN_NT
 #define START_THREAD
-ThreadId Thread::start(ThreadEntryPoint* routine, void* arg, int priority_arg, Handle* p_handle)
+void Thread::start(ThreadEntryPoint* routine, void* arg, int priority_arg, Handle* p_handle)
 {
 /**************************************
  *
@@ -322,8 +321,6 @@ ThreadId Thread::start(ThreadEntryPoint* routine, void* arg, int priority_arg, H
 	{
 		CloseHandle(handle);
 	}
-
-	return thread_id;
 }
 
 void Thread::waitForCompletion(Handle& handle)
@@ -350,9 +347,9 @@ ThreadId Thread::getId()
 	return GetCurrentThreadId();
 }
 
-bool Thread::isCurrent(const ThreadId threadId)
+bool Thread::isCurrent(Handle& thread)
 {
-	return GetCurrentThreadId() == threadId;
+	return GetCurrentThreadId() == GetThreadId(thread);
 }
 
 void Thread::sleep(unsigned milliseconds)
@@ -369,7 +366,7 @@ void Thread::yield()
 
 
 #ifndef START_THREAD
-ThreadId Thread::start(ThreadEntryPoint* routine, void* arg, int priority_arg, Handle* p_handle)
+void Thread::start(ThreadEntryPoint* routine, void* arg, int priority_arg, Handle* p_handle)
 {
 /**************************************
  *
@@ -381,8 +378,7 @@ ThreadId Thread::start(ThreadEntryPoint* routine, void* arg, int priority_arg, H
  *	Wrong attempt to start a new thread.
  *
  **************************************/
-	fb_assert(false);
-	return 0;
+
 }
 
 void Thread::waitForCompletion(Handle&)

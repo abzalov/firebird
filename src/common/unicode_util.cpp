@@ -50,6 +50,9 @@
 #	include <unicode/utf_old.h>
 #endif
 
+// The next major ICU version after 4.8 is 49.
+#define ICU_NEW_VERSION_MEANING	49
+
 
 using namespace Firebird;
 
@@ -118,7 +121,7 @@ public:
 
 namespace Jrd {
 
-static ModuleLoader::Module* formatAndLoad(const char* templateName,
+static void formatFilename(PathName& filename, const char* templateName,
 	int majorVersion, int minorVersion);
 
 
@@ -226,7 +229,10 @@ private:
 	ImplementConversionICU(int aMajorVersion, int aMinorVersion)
 		: BaseICU(aMajorVersion, aMinorVersion)
 	{
-		module = formatAndLoad(ucTemplate, aMajorVersion, aMinorVersion);
+		PathName filename;
+		formatFilename(filename, ucTemplate, aMajorVersion, aMinorVersion);
+
+		module = ModuleLoader::fixAndLoadModule(filename);
 		if (!module)
 			return;
 
@@ -336,27 +342,16 @@ static const char* const COLL_30_VERSION = "41.128.4.4";	// ICU 3.0 collator ver
 static GlobalPtr<UnicodeUtil::ICUModules> icuModules;
 
 
-static ModuleLoader::Module* formatAndLoad(const char* templateName,
+static void formatFilename(PathName& filename, const char* templateName,
 	int majorVersion, int minorVersion)
 {
-	// ICU has several schemas for placing version into file name
-	const char* patterns[] =
-	{
-		"%d", "%d_%d", "%d%d", NULL
-	};
+	string s;
+	if (majorVersion >= ICU_NEW_VERSION_MEANING)
+		s.printf("%d", majorVersion);
+	else
+		s.printf("%d%d", majorVersion, minorVersion);
 
-	PathName s, filename;
-	for (const char** p = patterns; *p; ++p)
-	{
-		s.printf(*p, majorVersion, minorVersion);
-		filename.printf(templateName, s.c_str());
-
-		ModuleLoader::Module* module = ModuleLoader::fixAndLoadModule(filename);
-		if (module)
-			return module;
-	}
-
-	return nullptr;
+	filename.printf(templateName, s.c_str());
 }
 
 
@@ -979,14 +974,17 @@ UnicodeUtil::ICU* UnicodeUtil::loadICU(const string& icuVersion, const string& c
 			continue;
 
 		string configVersion;
-		configVersion.printf("%d.%d", majorVersion, minorVersion);
-		if (version != configVersion)
+
+		if (majorVersion >= ICU_NEW_VERSION_MEANING)
 		{
 			minorVersion = 0;
 			configVersion.printf("%d", majorVersion);
-			if (version != configVersion)
-				continue;
 		}
+		else
+			configVersion.printf("%d.%d", majorVersion, minorVersion);
+
+		if (version != configVersion)
+			continue;
 
 		ReadLockGuard readGuard(icuModules->lock, "UnicodeUtil::loadICU");
 
@@ -994,20 +992,27 @@ UnicodeUtil::ICU* UnicodeUtil::loadICU(const string& icuVersion, const string& c
 		if (icuModules->modules.get(version, icu))
 			return icu;
 
+		PathName filename;
+		formatFilename(filename, ucTemplate, majorVersion, minorVersion);
+
 		icu = FB_NEW_POOL(*getDefaultMemoryPool()) ICU(majorVersion, minorVersion);
 
-		icu->ucModule = formatAndLoad(ucTemplate, majorVersion, minorVersion);
+		icu->ucModule = ModuleLoader::fixAndLoadModule(filename);
+
 		if (!icu->ucModule)
 		{
-			gds__log("failed to load UC icu module version %s", configVersion.c_str());
+			gds__log("failed to load module %s", filename.c_str());
 			delete icu;
 			continue;
 		}
 
-		icu->inModule = formatAndLoad(inTemplate, majorVersion, minorVersion);
+		formatFilename(filename, inTemplate, majorVersion, minorVersion);
+
+		icu->inModule = ModuleLoader::fixAndLoadModule(filename);
+
 		if (!icu->inModule)
 		{
-			gds__log("failed to load IN icu module version %s", configVersion.c_str());
+			gds__log("failed to load module %s", filename.c_str());
 			delete icu;
 			continue;
 		}
@@ -1132,25 +1137,26 @@ UnicodeUtil::ConversionICU& UnicodeUtil::getConversionICU()
 	LocalStatus ls;
 	CheckStatusWrapper lastError(&ls);
 	string version;
+	const int majorArray[] = {5, 4, 3, 6, 0};
 
-	for (int major = 4; major <= 79; ++major)
+	for (const int* major = majorArray; *major; ++major)
 	{
 		for (int minor = 20; minor--; ) // from 19 down to 0
 		{
-			if ((major == favMaj) && (minor == favMin))
+			if ((*major == favMaj) && (minor == favMin))
 			{
 				continue;
 			}
 
 			try
 			{
-				if ((convIcu = ImplementConversionICU::create(major, minor)))
+				if ((convIcu = ImplementConversionICU::create(*major, minor)))
 					return *convIcu;
 			}
 			catch (const Exception& ex)
 			{
 				ex.stuffException(&lastError);
-				version.printf("Error loading ICU library version %d.%d", major, minor);
+				version.printf("Error loading ICU library version %d.%d", *major, minor);
 			}
 		}
 	}
@@ -1170,7 +1176,7 @@ string UnicodeUtil::getDefaultIcuVersion()
 	string rc;
 	UnicodeUtil::ConversionICU& icu(UnicodeUtil::getConversionICU());
 
-	if (icu.vMajor >= 10 && icu.vMinor == 0)
+	if (icu.vMajor >= ICU_NEW_VERSION_MEANING)
 		rc.printf("%d", icu.vMajor);
 	else
 		rc.printf("%d.%d", icu.vMajor, icu.vMinor);

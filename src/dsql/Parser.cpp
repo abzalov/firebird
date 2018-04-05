@@ -329,12 +329,17 @@ bool Parser::yylexSkipSpaces()
 		if (lex.ptr >= lex.end)
 			return false;
 
-		if (yylexSkipEol())
-			continue;
+		c = *lex.ptr++;
 
 		// Process comments
 
-		c = *lex.ptr++;
+		if (c == '\n')
+		{
+			lex.lines++;
+			lex.line_start = lex.ptr;
+			continue;
+		}
+
 		if (c == '-' && lex.ptr < lex.end && *lex.ptr == '-')
 		{
 			// single-line
@@ -342,9 +347,12 @@ bool Parser::yylexSkipSpaces()
 			lex.ptr++;
 			while (lex.ptr < lex.end)
 			{
-				lex.ptr++;
-				if (yylexSkipEol())
+				if ((c = *lex.ptr++) == '\n')
+				{
+					lex.lines++;
+					lex.line_start = lex.ptr; // + 1; // CVC: +1 left out.
 					break;
+				}
 			}
 			if (lex.ptr >= lex.end)
 				return false;
@@ -359,13 +367,16 @@ bool Parser::yylexSkipSpaces()
 			lex.ptr++;
 			while (lex.ptr < lex.end)
 			{
-				if (yylexSkipEol())
-					continue;
-
 				if ((c = *lex.ptr++) == '*')
 				{
 					if (*lex.ptr == '/')
 						break;
+				}
+				if (c == '\n')
+				{
+					lex.lines++;
+					lex.line_start = lex.ptr; // + 1; // CVC: +1 left out.
+
 				}
 			}
 			if (lex.ptr >= lex.end)
@@ -387,34 +398,6 @@ bool Parser::yylexSkipSpaces()
 	}
 
 	return true;
-}
-
-
-bool Parser::yylexSkipEol()
-{
-	bool eol = false;
-	const TEXT c = *lex.ptr;
-	if (c == '\r')
-	{
-		lex.ptr++;
-		if (lex.ptr < lex.end && *lex.ptr == '\n')
-			lex.ptr++;
-
-		eol = true;
-	}
-	else if (c == '\n')
-	{
-		lex.ptr++;
-		eol = true;
-	}
-
-	if (eol)
-	{
-		lex.lines++;
-		lex.line_start = lex.ptr; // + 1; // CVC: +1 left out.
-	}
-
-	return eol;
 }
 
 

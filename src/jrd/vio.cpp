@@ -724,9 +724,6 @@ bool VIO_chase_record_version(thread_db* tdbb, record_param* rpb,
 	rpb->rpb_runtime_flags &= ~RPB_UNDO_FLAGS;
 	int forceBack = 0;
 
-	if (rpb->rpb_stream_flags & RPB_s_unstable)
-		noundo = true;
-
 	if (state == tra_us && !noundo && !(transaction->tra_flags & TRA_system))
 	{
 		switch (get_undo_data(tdbb, transaction, rpb, pool))
@@ -1612,8 +1609,7 @@ void VIO_erase(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 		case rel_indices:
 			protect_system_table_delupd(tdbb, relation, "DELETE");
 			EVL_field(0, rpb->rpb_record, f_idx_relation, &desc);
-			EVL_field(0, rpb->rpb_record, f_idx_sys_flag, &desc2);
-			SCL_check_relation(tdbb, &desc, SCL_control, MOV_get_long(tdbb, &desc2, 0) == 1);
+			SCL_check_relation(tdbb, &desc, SCL_control);
 			EVL_field(0, rpb->rpb_record, f_idx_id, &desc2);
 			if ( (id = MOV_get_long(tdbb, &desc2, 0)) )
 			{
@@ -3254,8 +3250,7 @@ void VIO_store(thread_db* tdbb, record_param* rpb, jrd_tra* transaction)
 		case rel_indices:
 			protect_system_table_insert(tdbb, request, relation);
 			EVL_field(0, rpb->rpb_record, f_idx_relation, &desc);
-			EVL_field(0, rpb->rpb_record, f_idx_sys_flag, &desc2);
-			SCL_check_relation(tdbb, &desc, SCL_control, MOV_get_long(tdbb, &desc2, 0) == 1);
+			SCL_check_relation(tdbb, &desc, SCL_control);
 			EVL_field(0, rpb->rpb_record, f_idx_name, &desc);
 			if (EVL_field(0, rpb->rpb_record, f_idx_exp_blr, &desc2))
 			{

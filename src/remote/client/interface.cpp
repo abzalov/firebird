@@ -5013,11 +5013,10 @@ Firebird::IEvents* Attachment::queEvents(CheckStatusWrapper* status, Firebird::I
 			receive_response(status, rdb, packet);
 			port->connect(packet);
 
-			rem_port* port_async = port->port_async;
-			port_async->port_events_threadId = 
-				Thread::start(event_thread, port_async, THREAD_high, &port_async->port_events_thread);
+			Thread::start(event_thread, port->port_async, THREAD_high,
+						  &port->port_async->port_events_thread);
 
-			port_async->port_context = rdb;
+			port->port_async->port_context = rdb;
 		}
 
 		// Add event block to port's list of active remote events

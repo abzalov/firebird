@@ -359,9 +359,7 @@ Decimal64 Decimal64::floor(DecimalStatus decSt) const
 
 int Decimal64::compare(DecimalStatus decSt, Decimal64 tgt) const
 {
-	DecimalStatus cmpStatus(decSt);
-	cmpStatus.decExtFlag &= ~DEC_IEEE_754_Invalid_operation;
-	DecimalContext context(this, cmpStatus);
+	DecimalContext context(this, decSt);
 	decDouble r;
 	decDoubleCompare(&r, &dec, &tgt.dec, &context);
 	return decDoubleToInt32(&r, &context, DEC_ROUND_HALF_UP);

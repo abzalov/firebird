@@ -145,15 +145,9 @@ public:
 	{
 		if (replyLength > wakeLength)
 			replyLength = wakeLength;
+		memcpy(replyData, wakeData, replyLength);
 
-		if (wakeData)
-		{
-			memcpy(replyData, wakeData, replyLength);
-			wake = true;
-		}
-		else
-			stop();
-
+		wake = true;
 		sem.release();
 	}
 
@@ -204,7 +198,7 @@ public:
 		loadClientKey();
 		unsigned rc = keyCallback ?
 			keyCallback->callback(dataLength, data, bufferLength, buffer) :
-			// use legacy behavior if holders do wish to accept keys from client
+			// use legacy behavior if holders to do wish to accept keys from client
 			networkCallback.callback(dataLength, data, bufferLength, buffer);
 
 		return rc;
@@ -6399,8 +6393,7 @@ SSHORT rem_port::asyncReceive(PACKET* asyncPacket, const UCHAR* buffer, SSHORT d
 		return 0;
 	}
 
-	SLONG original_op = xdr_peek_long(&port_async_receive->port_receive, buffer, dataSize);
-	switch (original_op)
+	switch (xdr_peek_long(&port_async_receive->port_receive, buffer, dataSize))
 	{
 	case op_cancel:
 	case op_abort_aux_connection:
@@ -6434,15 +6427,13 @@ SSHORT rem_port::asyncReceive(PACKET* asyncPacket, const UCHAR* buffer, SSHORT d
 		break;
 	case op_abort_aux_connection:
 		if (port_async && (port_async->port_flags & PORT_connecting))
+		{
 			port_async->abort_aux_connection();
+		}
 		break;
 	case op_crypt_key_callback:
 		port_server_crypt_callback->wakeup(asyncPacket->p_cc.p_cc_data.cstr_length,
 			asyncPacket->p_cc.p_cc_data.cstr_address);
-		break;
-	case op_partial:
-		if (original_op == op_crypt_key_callback)
-			port_server_crypt_callback->wakeup(0, NULL);
 		break;
 	default:
 		fb_assert(false);

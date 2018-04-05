@@ -4135,8 +4135,7 @@ keyword_or_column
 	| UPDATING
 	| VAR_SAMP
 	| VAR_POP
-	| DECFLOAT				// added in FB 4.0
-	| UNBOUNDED
+	| UNBOUNDED				// added in FB 4.0
 	| WINDOW
 	;
 
@@ -4800,15 +4799,15 @@ varbinary_character_keyword
 
 %type <legacyField> decfloat_type
 decfloat_type
-	: DECFLOAT precision_opt_nz
+	: DECFLOAT '(' signed_long_integer ')'
 		{
-			if ($2 != 0 && $2 != 16 && $2 != 34)
-				yyabandon(YYPOSNARG(2), -842, isc_decprecision_err);	// DecFloat precision must be 16 or 34.
+			if ($3 != 16 && $3 != 34)
+				yyabandon(YYPOSNARG(3), -842, isc_decprecision_err);	// DecFloat precision must be 16 or 34.
 
 			$$ = newNode<dsql_fld>();
-			$$->precision = $2 == 0 ? 34 : (USHORT) $2;
-			$$->dtype = $2 == 16 ? dtype_dec64 : dtype_dec128;
-			$$->length = $2 == 16 ? sizeof(Decimal64) : sizeof(Decimal128);
+			$$->precision = $3;
+			$$->dtype = $3 == 16 ? dtype_dec64 : dtype_dec128;
+			$$->length = $3 == 16 ? sizeof(Decimal64) : sizeof(Decimal128);
 		}
 	;
 
@@ -5010,12 +5009,6 @@ precision_opt
 	| '(' nonneg_short_integer ')'	{ $$ = $2; }
 	;
 
-// alternative to precision_opt that does not allow zero
-%type <int32Val> precision_opt_nz
-precision_opt_nz
-	: /* nothing */				{ $$ = 0; }
-	| '(' pos_short_integer ')'	{ $$ = $2; }
-	;
 
 // transaction statements
 
@@ -8489,6 +8482,7 @@ non_reserved_word
 	| BIND					// added in FB 4.0
 	| COMPARE_DECFLOAT
 	| CUME_DIST
+	| DECFLOAT
 	| DEFINER
 	| EXCLUDE
 	| FIRST_DAY

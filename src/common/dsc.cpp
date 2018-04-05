@@ -1466,8 +1466,6 @@ void dsc::getSqlInfo(SLONG* sqlLength, SLONG* sqlSubType, SLONG* sqlScale, SLONG
 		case dtype_dec_fixed:
 			*sqlType = SQL_DEC_FIXED;
 			*sqlScale = dsc_scale;
-			if (dsc_sub_type)
-				*sqlSubType = dsc_sub_type;
 			break;
 
 		default:
